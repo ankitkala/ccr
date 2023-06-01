@@ -139,7 +139,8 @@ class TransportResumeIndexReplicationAction @Inject constructor(transportService
             val followerIndexService = indicesService.indexServiceSafe(followerShardId.index)
             val indexShard = followerIndexService.getShard(followerShardId.id)
 
-            if  (!retentionLeaseHelper.verifyRetentionLeaseExist(ShardId(params.leaderIndex, followerShardId.id), followerShardId, indexShard.lastSyncedGlobalCheckpoint+1)) {
+            if  (!retentionLeaseHelper.retentionLeaseExistsForResume(ShardId(params.leaderIndex, followerShardId.id),
+                            indexShard.lastSyncedGlobalCheckpoint+1, followerShardId)) {
                 isResumable = false
             }
         }

@@ -19,8 +19,8 @@ import org.opensearch.index.shard.ShardId
 class GetStoreMetadataRequest : RemoteClusterRepositoryRequest<GetStoreMetadataRequest> {
 
     constructor(restoreUUID: String, node: DiscoveryNode, leaderShardId: ShardId,
-                followerCluster: String, followerShardId: ShardId):
-            super(restoreUUID, node, leaderShardId, followerCluster, followerShardId)
+                followerClusterName: String, followerClusterUUID: String, followerShardId: ShardId):
+            super(restoreUUID, node, leaderShardId, followerClusterName, followerClusterUUID, followerShardId)
 
     constructor(input : StreamInput): super(input)
 

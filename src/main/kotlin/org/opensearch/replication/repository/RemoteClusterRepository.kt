@@ -281,8 +281,7 @@ class RemoteClusterRepository(private val repositoryMetadata: RepositoryMetadata
                 snapshotShardId.id)
         restoreUUID = UUIDs.randomBase64UUID()
         val getStoreMetadataRequest = GetStoreMetadataRequest(restoreUUID, leaderShardNode, leaderShardId,
-            RemoteClusterRetentionLeaseHelper.getFollowerClusterNameWithUUID(clusterService.clusterName.value(), clusterService.state().metadata.clusterUUID()),
-             followerShardId)
+            clusterService.clusterName.value(), clusterService.state().metadata.clusterUUID(), followerShardId)
 
         // Gets the remote store metadata
         val metadataResponse = executeActionOnRemote(GetStoreMetadataAction.INSTANCE, getStoreMetadataRequest, followerIndexName)
@@ -292,7 +291,7 @@ class RemoteClusterRepository(private val repositoryMetadata: RepositoryMetadata
         // 2. Request for individual files from leader cluster for this shardId
         // make sure the store is not released until we are done.
         val fileMetadata = ArrayList(metadataSnapshot.asMap().values)
-        multiChunkTransfer = RemoteClusterMultiChunkTransfer(log, clusterService.clusterName.value(), client.threadPool().threadContext,
+        multiChunkTransfer = RemoteClusterMultiChunkTransfer(log, clusterService.clusterName.value(), clusterService.state().metadata.clusterUUID(), client.threadPool().threadContext,
                 store, replicationSettings.concurrentFileChunks, restoreUUID, replMetadata, leaderShardNode,
                 leaderShardId, fileMetadata, leaderClusterClient, recoveryState, replicationSettings.chunkSize,
                 object : ActionListener<Void> {
@@ -337,7 +336,7 @@ class RemoteClusterRepository(private val repositoryMetadata: RepositoryMetadata
                                        leaderShardId: ShardId, followerShardId: ShardId, followerIndexName: String) {
         try {
             val releaseResourcesReq = ReleaseLeaderResourcesRequest(restoreUUID, leaderShardNode, leaderShardId,
-                    clusterService.clusterName.value(), followerShardId)
+                    clusterService.clusterName.value(), clusterService.state().metadata.clusterUUID(), followerShardId)
             if (leaderClusterGetAction(ReleaseLeaderResourcesAction.INSTANCE, releaseResourcesReq, followerIndexName).isAcknowledged) {
                 log.info("Successfully released resources at the leader cluster for $leaderShardId at $leaderShardNode")
             }

@@ -17,12 +17,15 @@ import org.opensearch.replication.util.performOp
 import org.opensearch.OpenSearchException
 import org.opensearch.action.support.single.shard.SingleShardRequest
 import org.opensearch.client.node.NodeClient
+import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.component.AbstractLifecycleComponent
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.inject.Singleton
 import org.opensearch.common.lucene.store.InputStreamIndexInput
 import org.opensearch.common.util.io.IOUtils
 import org.opensearch.index.seqno.RetentionLeaseActions
+import org.opensearch.index.seqno.RetentionLeaseAlreadyExistsException
+import org.opensearch.index.seqno.SequenceNumbers
 import org.opensearch.index.store.Store
 import org.opensearch.indices.IndicesService
 import java.io.Closeable
@@ -88,7 +91,8 @@ class RemoteClusterRestoreLeaderService @Inject constructor(private val indicesS
         val leaderIndexShard = indicesService.getShardOrNull(request.leaderShardId)
                 ?: throw OpenSearchException("Shard [$request.leaderShardId] missing")
         // Passing nodeclient of the leader to acquire the retention lease on leader shard
-        val retentionLeaseHelper = RemoteClusterRetentionLeaseHelper(request.followerCluster, nodeClient)
+        val retentionLeaseHelper = RemoteClusterRetentionLeaseHelper(request.followerClusterName,
+                request.followerClusterUUID, nodeClient)
         /**
          * ODFE Replication supported for >= ES 7.8. History of operations directly from
          * lucene index. With the retention lock set - safe commit should have all the history
@@ -114,7 +118,7 @@ class RemoteClusterRestoreLeaderService @Inject constructor(private val indicesS
         var fromSeqNo = RetentionLeaseActions.RETAIN_ALL
 
         // Adds the retention lease for fromSeqNo for the next stage of the replication.
-        retentionLeaseHelper.addRetentionLease(request.leaderShardId, fromSeqNo,
+        retentionLeaseHelper.addRetentionLeaseDuringBootstrap(request.leaderShardId, fromSeqNo,
                 request.followerShardId, RemoteClusterRepository.REMOTE_CLUSTER_REPO_REQ_TIMEOUT_IN_MILLI_SEC)
 
         /**

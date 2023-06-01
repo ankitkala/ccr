@@ -24,18 +24,21 @@ abstract class RemoteClusterRepositoryRequest<T : SingleShardRequest<T>?>:
     val restoreUUID: String
     val node: DiscoveryNode
     val leaderShardId: ShardId
-    val followerCluster: String
+    val followerClusterName: String
+    val followerClusterUUID: String
     val followerShardId: ShardId
 
     constructor(restoreUUID: String,
                 node: DiscoveryNode,
                 leaderShardId: ShardId,
-                followerCluster: String,
+                followerClusterName: String,
+                followerClusterUUID: String,
                 followerShardId: ShardId): super(leaderShardId.indexName) {
         this.restoreUUID = restoreUUID
         this.node = node
         this.leaderShardId = leaderShardId
-        this.followerCluster = followerCluster
+        this.followerClusterName = followerClusterName
+        this.followerClusterUUID = followerClusterUUID
         this.followerShardId = followerShardId
     }
 
@@ -43,7 +46,8 @@ abstract class RemoteClusterRepositoryRequest<T : SingleShardRequest<T>?>:
         restoreUUID = input.readString()
         node = DiscoveryNode(input)
         leaderShardId = ShardId(input)
-        followerCluster = input.readString()
+        followerClusterName = input.readString()
+        followerClusterUUID = input.readString()
         followerShardId = ShardId(input)
         super.index = leaderShardId.indexName
     }
@@ -52,7 +56,8 @@ abstract class RemoteClusterRepositoryRequest<T : SingleShardRequest<T>?>:
         out.writeString(restoreUUID)
         node.writeTo(out)
         leaderShardId.writeTo(out)
-        out.writeString(followerCluster)
+        out.writeString(followerClusterName)
+        out.writeString(followerClusterUUID)
         followerShardId.writeTo(out)
     }
 

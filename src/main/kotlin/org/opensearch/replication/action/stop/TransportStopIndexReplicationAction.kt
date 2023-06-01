@@ -36,6 +36,7 @@ import org.opensearch.OpenSearchException
 import org.opensearch.action.ActionListener
 import org.opensearch.action.admin.indices.open.OpenIndexRequest
 import org.opensearch.action.support.ActionFilters
+import org.opensearch.action.support.IndicesOptions
 import org.opensearch.action.support.master.AcknowledgedResponse
 import org.opensearch.action.support.master.TransportMasterNodeAction
 import org.opensearch.client.Client
@@ -53,6 +54,8 @@ import org.opensearch.cluster.service.ClusterService
 import org.opensearch.common.inject.Inject
 import org.opensearch.common.io.stream.StreamInput
 import org.opensearch.common.settings.Settings
+import org.opensearch.index.IndexNotFoundException
+import org.opensearch.replication.task.index.IndexReplicationParams
 import org.opensearch.replication.util.stackTraceToString
 import org.opensearch.threadpool.ThreadPool
 import org.opensearch.transport.TransportService
@@ -114,9 +117,14 @@ class TransportStopIndexReplicationAction @Inject constructor(transportService: 
 
                 try {
                     val replMetadata = replicationMetadataManager.getIndexReplicationMetadata(request.indexName)
-                    val remoteClient = client.getRemoteClusterClient(replMetadata.connectionName)
-                    val retentionLeaseHelper = RemoteClusterRetentionLeaseHelper(clusterService.clusterName.value(), clusterService.state().metadata.clusterUUID(), remoteClient)
-                    retentionLeaseHelper.attemptRemoveRetentionLease(clusterService, replMetadata, request.indexName)
+                    val leaderIndexMetadata = getLeaderIndexMetadata(replMetadata.connectionName, replMetadata.leaderContext.resource)
+                    val leaderIndex = IndexReplicationParams(replMetadata.connectionName, leaderIndexMetadata.index, request.indexName).leaderIndex
+
+
+                    val leaderClient = client.getRemoteClusterClient(replMetadata.connectionName)
+                    val retentionLeaseHelper = RemoteClusterRetentionLeaseHelper(clusterService.clusterName.value(),
+                            clusterService.state().metadata.clusterUUID(), leaderClient)
+                    retentionLeaseHelper.removeRetentionLeaseForIndex(clusterService, leaderIndex, request.indexName)
                 } catch(e: Exception) {
                     log.error("Failed to remove retention lease from the leader cluster", e)
                 }
@@ -142,6 +150,18 @@ class TransportStopIndexReplicationAction @Inject constructor(transportService: 
                 listener.onFailure(e)
             }
         }
+    }
+
+    private suspend fun getLeaderIndexMetadata(leaderAlias: String, leaderIndex: String): IndexMetadata {
+        val leaderClusterClient = client.getRemoteClusterClient(leaderAlias)
+        val clusterStateRequest = leaderClusterClient.admin().cluster().prepareState()
+                .clear()
+                .setIndices(leaderIndex)
+                .setMetadata(true)
+                .setIndicesOptions(IndicesOptions.strictSingleIndexNoExpandForbidClosed())
+                .request()
+        val leaderState = leaderClusterClient.suspending(leaderClusterClient.admin().cluster()::state)(clusterStateRequest).state
+        return leaderState.metadata.index(leaderIndex) ?: throw IndexNotFoundException("${leaderAlias}:${leaderIndex}")
     }
 
     private fun validateReplicationStateOfIndex(request: StopIndexReplicationRequest) {

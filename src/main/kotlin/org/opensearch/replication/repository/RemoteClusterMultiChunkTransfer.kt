@@ -37,6 +37,7 @@ import org.opensearch.indices.recovery.RecoveryState
 
 class RemoteClusterMultiChunkTransfer(val logger: Logger,
                                       val followerClusterName: String,
+                                      val followerClusterUUID: String,
                                       threadContext: ThreadContext,
                                       val localStore: Store,
                                       maxConcurrentFileChunks: Int,
@@ -80,7 +81,7 @@ class RemoteClusterMultiChunkTransfer(val logger: Logger,
 
     override fun executeChunkRequest(request: RemoteClusterRepositoryFileChunk, listener: ActionListener<Void>) {
         val getFileChunkRequest = GetFileChunkRequest(restoreUUID, leaderNode, leaderShardId, request.storeFileMetadata,
-                request.offset, request.length, followerClusterName, recoveryState.shardId)
+                request.offset, request.length, followerClusterName, followerClusterUUID, recoveryState.shardId)
 
         launch(Dispatchers.IO + leaderClusterClient.threadPool().coroutineContext()) {
             try {

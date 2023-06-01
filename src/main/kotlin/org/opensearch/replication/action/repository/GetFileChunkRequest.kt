@@ -24,8 +24,8 @@ class GetFileChunkRequest : RemoteClusterRepositoryRequest<GetFileChunkRequest> 
     val length: Int
 
     constructor(restoreUUID: String, node: DiscoveryNode, leaderShardId: ShardId, storeFileMetaData: StoreFileMetadata,
-                offset: Long, length: Int, followerCluster: String, followerShardId: ShardId):
-            super(restoreUUID, node, leaderShardId, followerCluster, followerShardId) {
+                offset: Long, length: Int, followerClusterName: String, followerClusterUUID: String, followerShardId: ShardId):
+            super(restoreUUID, node, leaderShardId, followerClusterName, followerClusterUUID, followerShardId) {
         this.storeFileMetadata = storeFileMetaData
         this.offset = offset
         this.length = length
